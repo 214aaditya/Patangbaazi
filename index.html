@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Patangbaazi: Kai Po Che! (Kite Battle 2D)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Comic+Neue:ital,wght@0,700;1,700&family=Fredoka+One&display=swap" rel="stylesheet">
+  <style>
+    body {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Fredoka One', cursive, sans-serif;
+      background: #0f172a;
+    }
+    .bungee-font {
+      font-family: 'Bungee', cursive;
+    }
+    .comic-font {
+      font-family: 'Comic Neue', cursive, sans-serif;
+    }
+    .comic-border {
+      border: 3px solid #000;
+      box-shadow: 4px 4px 0px #000;
+    }
+    .btn-bounce:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0px #000;
+    }
+    @keyframes floatBanner {
+      0%, 100% { transform: translateY(0) scale(1) rotate(-1deg); }
+      50% { transform: translateY(-6px) scale(1.02) rotate(1deg); }
+    }
+    .animate-float {
+      animation: floatBanner 2.6s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen overflow-hidden flex flex-col items-center justify-center text-white p-0 sm:p-3">
+
+  <!-- Main Game Frame -->
+  <div class="relative w-full h-full max-w-xl mx-auto flex flex-col bg-sky-200 overflow-hidden sm:rounded-3xl border-0 sm:border-4 sm:border-amber-400 shadow-2xl">
+
+    <!-- Top Comic HUD -->
+    <header class="absolute top-0 left-0 right-0 z-20 p-2 sm:p-3 flex justify-between items-start pointer-events-none">
+      
+      <!-- Score & Cut Kites -->
+      <div class="flex flex-col gap-1 pointer-events-auto">
+        <div class="bg-amber-400 text-slate-950 px-3 py-1 rounded-xl comic-border font-black text-xs sm:text-sm flex items-center gap-2">
+          <span>🪁 KITES CUT:</span>
+          <span id="scoreDisplay" class="text-base sm:text-xl bungee-font text-rose-600">0</span>
+        </div>
+        <div class="bg-white/90 text-slate-900 px-2.5 py-0.5 rounded-lg comic-border text-[11px] font-black w-fit">
+          RECORD: <span id="recordDisplay">0</span> KITES
+        </div>
+      </div>
+
+      <!-- Manja Health / Bareilly Powerup HUD -->
+      <div class="flex flex-col items-end gap-1 pointer-events-auto">
+        <div class="flex items-center gap-2">
+          <!-- Desi Patang BGM Toggle -->
+          <button id="bgmBtn" class="bg-rose-500 text-yellow-200 px-2 py-1 rounded-xl comic-border text-xs font-black hover:bg-rose-400 transition flex items-center gap-1">
+            <span>🎵</span> <span id="bgmStatus">SONG: ON</span>
+          </button>
+
+          <!-- Desi Voice Toggle -->
+          <button id="voiceBtn" class="bg-amber-400 text-slate-950 px-2 py-1 rounded-xl comic-border text-xs font-black hover:bg-yellow-300 transition flex items-center gap-1">
+            <span>🗣️</span> <span id="voiceStatus">VOICE: ON</span>
+          </button>
+
+          <!-- Bareilly Manja Badge -->
+          <div id="bareillyBadge" class="hidden bg-rose-600 text-yellow-200 px-2 py-0.5 rounded-xl comic-border text-[10px] sm:text-xs font-black animate-pulse flex items-center gap-1">
+            <span>🔥</span>
+            <span>BAREILLY MANJA!</span>
+          </div>
+
+          <!-- Audio Toggle -->
+          <button id="muteBtn" class="bg-white text-slate-900 p-1.5 sm:p-2 rounded-xl comic-border text-sm hover:bg-yellow-200 transition">
+            🔊
+          </button>
+        </div>
+
+        <!-- String Tension / Health Bar -->
+        <div class="bg-slate-900/80 px-2 py-1 rounded-xl comic-border flex flex-col gap-1 w-32 sm:w-36">
+          <div class="flex justify-between text-[10px] font-bold text-amber-300">
+            <span>MANJA LIFE</span>
+            <span id="healthPercent">100%</span>
+          </div>
+          <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden border border-black">
+            <div id="healthBar" class="bg-emerald-500 h-full w-full transition-all duration-150"></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Canvas -->
+    <div class="relative flex-1 w-full h-full">
+      <canvas id="gameCanvas" class="w-full h-full block bg-gradient-to-b from-sky-400 via-sky-200 to-amber-100 cursor-crosshair touch-none"></canvas>
+
+      <!-- Animated Rooftop Desi Shouting Comic Bubble -->
+      <div id="shoutBubble" class="absolute bottom-28 left-1/2 -translate-x-1/2 pointer-events-none transition-all duration-200 opacity-0 scale-75 z-20">
+        <div class="relative bg-yellow-300 text-slate-950 font-black px-4 py-2 rounded-2xl comic-border text-xs sm:text-sm text-center shadow-2xl max-w-xs whitespace-normal sm:whitespace-nowrap animate-bounce">
+          <span id="shoutText">"ढील दे दे रे!"</span>
+          <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-black"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- On-screen Action Controls (KHINCH on Left, DHEEL on Right, equal size & aligned) -->
+    <!-- KHINCH (Bottom Left Corner) -->
+    <div class="absolute bottom-3 left-3 z-20 pointer-events-auto select-none">
+      <button id="btnKhinch" class="btn-bounce w-20 h-16 sm:w-24 sm:h-20 bg-gradient-to-r from-rose-500 to-red-600 active:from-rose-600 active:to-red-700 text-white comic-border rounded-2xl flex flex-col items-center justify-center shadow-lg border-2 border-white">
+        <span class="text-2xl sm:text-3xl leading-none">⚡</span>
+        <span class="text-[11px] sm:text-xs font-black uppercase tracking-wider text-yellow-200">KHINCH!</span>
+      </button>
+    </div>
+
+    <!-- DHEEL (Bottom Right Corner) -->
+    <div class="absolute bottom-3 right-3 z-20 pointer-events-auto select-none">
+      <button id="btnDheel" class="btn-bounce w-20 h-16 sm:w-24 sm:h-20 bg-gradient-to-r from-sky-400 to-blue-500 active:from-sky-500 active:to-blue-600 text-slate-950 comic-border rounded-2xl flex flex-col items-center justify-center shadow-lg border-2 border-white">
+        <span class="text-2xl sm:text-3xl leading-none">💨</span>
+        <span class="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white">DHEEL</span>
+      </button>
+    </div>
+
+    <!-- START SCREEN -->
+    <div id="startScreen" class="absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-5 text-center">
+      <div class="animate-float bg-yellow-400 text-slate-950 px-4 py-1.5 rounded-full comic-border text-xs font-black uppercase tracking-wider mb-2">
+        🪁 MAKAR SANKRANTI ROOFTOP CLASH 🪁
+      </div>
+      <h1 class="text-4xl sm:text-5xl bungee-font text-amber-300 drop-shadow-[4px_4px_0px_#000] mb-1 leading-tight">
+        PATANGBAAZI
+      </h1>
+      <p class="comic-font text-pink-300 font-bold text-sm sm:text-base mb-4">
+        "Lapet Re Lapet! Sharma Ji ki patang kaat ke dikhao!"
+      </p>
+
+      <!-- How to Play Card -->
+      <div class="bg-amber-100 text-slate-900 comic-border rounded-2xl p-3 sm:p-4 max-w-sm text-left text-xs font-bold space-y-2 mb-5">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👆 🖱️</span>
+          <span><b>Touchpad / Finger Drag:</b> Screen par finger / cursor glide karke patang udao!</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⚡</span>
+          <span><b>KHINCH (Space / ⚡ Button):</b> Upar kheench ke enemy ki manja kaato!</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">💨</span>
+          <span><b>DHEEL (Shift / 💨 Button):</b> "ढील दे दे रे" - Slip out of friction!</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🕊️</span>
+          <span><b>Kabootar:</b> Inse bacho, ye manja tod dete hain.</span>
+        </div>
+      </div>
+
+      <button id="startBtn" class="btn-bounce px-8 py-3.5 bg-yellow-400 hover:bg-yellow-300 text-slate-950 comic-border font-black text-xl rounded-2xl flex items-center gap-2 tracking-wider">
+        <span>🪁</span> UDAO PATANG!
+      </button>
+      <span class="text-[11px] text-yellow-200/80 mt-2 font-bold">Touchpad / Mouse drag or Arrow keys supported!</span>
+    </div>
+
+    <!-- GAME OVER SCREEN -->
+    <div id="gameOverScreen" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-5 text-center hidden">
+      <div class="text-5xl mb-1 animate-bounce">✂️</div>
+      <h2 class="text-3xl sm:text-4xl bungee-font text-rose-500 drop-shadow-[3px_3px_0px_#000] mb-1">
+        PATANG KAT GAYI!
+      </h2>
+      <p id="defeatQuote" class="comic-font text-amber-300 font-bold text-sm max-w-xs mb-4">
+        "Pinku ne neeche se kheech ke kaat di!"
+      </p>
+
+      <div class="bg-yellow-400 text-slate-950 comic-border rounded-2xl p-4 w-64 mb-5 flex flex-col gap-2 font-black">
+        <div class="flex justify-between items-center text-xs">
+          <span>PATANGS CUT:</span>
+          <span id="finalScore" class="bungee-font text-rose-600 text-lg">0</span>
+        </div>
+        <div class="flex justify-between items-center text-xs">
+          <span>ROOFTOP TITLE:</span>
+          <span id="finalTitle" class="text-indigo-900 text-xs font-bold">Rookie Chhat Boy</span>
+        </div>
+        <div class="h-0.5 bg-black/20 my-0.5"></div>
+        <div class="flex justify-between items-center text-xs">
+          <span>BEST SCORE:</span>
+          <span id="finalRecord" class="text-emerald-800 text-sm">0</span>
+        </div>
+      </div>
+
+      <button id="restartBtn" class="btn-bounce px-8 py-3.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 comic-border font-black text-lg rounded-2xl flex items-center gap-2">
+        <span>🔄</span> EK AUR PATANG UDAO!
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    /* =====================================================================
+       SYNTHESIZED SOUND EFFECTS (Web Audio API)
+       ===================================================================== */
+    class KiteSoundFX {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.bgmEnabled = true;
+        this.voiceEnabled = true;
+        this.hindiVoice = null;
+        this.lastVoiceTime = 0;
+        this.bgmTimer = null;
+        this.bgmStep = 0;
+        this.bgmMasterGain = null; // Master 75% volume controller
+        this.initVoice();
+      }
+
+      initVoice() {
+        if ('speechSynthesis' in window) {
+          const loadVoices = () => {
+            const voices = window.speechSynthesis.getVoices();
+            // Strictly prioritize native Indian Hindi (hi-IN) or Gujarati/Indian regional voice
+            this.hindiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang === 'hi_IN')
+              || voices.find(v => v.lang.startsWith('hi'))
+              || voices.find(v => v.lang === 'gu-IN' || v.lang.startsWith('gu'))
+              || voices.find(v => v.lang.includes('IN'))
+              || voices[0] || null;
+          };
+          loadVoices();
+          if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = loadVoices;
+          }
+        }
+      }
+
+      speakDesi(text, urgent = false) {
+        if (!this.voiceEnabled || !('speechSynthesis' in window)) return;
+        const now = Date.now();
+        // Cooldown between shouts to keep it fun and clean
+        if (now - this.lastVoiceTime < (urgent ? 1400 : 2400)) return;
+        this.lastVoiceTime = now;
+
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          if (this.hindiVoice) {
+            utterance.voice = this.hindiVoice;
+          }
+          utterance.lang = 'hi-IN'; // Force Hindi India locale for authentic "लपेट" (lapet) accent
+          utterance.rate = urgent ? 1.05 : 0.95; // Natural colloquial rooftop cadence
+          utterance.pitch = 1.15; // Natural energetic vocal pitch
+          utterance.volume = this.muted ? 0 : 1;
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {
+          console.warn("Speech error:", e);
+        }
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+
+          // Master volume node dedicated to BGM set at 75% volume (0.75 gain)
+          this.bgmMasterGain = this.ctx.createGain();
+          this.bgmMasterGain.gain.setValueAtTime(0.75, this.ctx.currentTime);
+          this.bgmMasterGain.connect(this.ctx.destination);
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        this.initVoice();
+        this.startPatangBGM();
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        if (this.bgmMasterGain && this.ctx) {
+          this.bgmMasterGain.gain.setValueAtTime(this.muted ? 0 : 0.75, this.ctx.currentTime);
+        }
+        return this.muted;
+      }
+
+      toggleBGM() {
+        this.bgmEnabled = !this.bgmEnabled;
+        if (!this.bgmEnabled && this.bgmTimer) {
+          clearInterval(this.bgmTimer);
+          this.bgmTimer = null;
+        } else if (this.bgmEnabled) {
+          this.startPatangBGM();
+        }
+        return this.bgmEnabled;
+      }
+
+      toggleVoice() {
+        this.voiceEnabled = !this.voiceEnabled;
+        if (!this.voiceEnabled && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+        return this.voiceEnabled;
+      }
+
+      /* -------------------------------------------------------------
+         INDIAN PATANG FESTIVAL THEME SONG (Procedural Web Audio BGM)
+         Folk Raga Bhupali / Bilawal celebratory notes inspired by
+         "ढील दे ढील दे दे रे भैया" & "उड़ी उड़ी जाए" (75% Volume Mix)
+         ------------------------------------------------------------- */
+      startPatangBGM() {
+        if (this.bgmTimer || !this.bgmEnabled) return;
+
+        // Pentatonic Sa Re Ga Pa Dha Sa' (Indian Makar Sankranti Folk Theme)
+        const C4 = 261.63, D4 = 293.66, E4 = 329.63, G4 = 392.00, A4 = 440.00, C5 = 523.25, D5 = 587.33;
+
+        // Catchy rooftop kite flying festive melody loop (16-step beat)
+        const melody = [
+          G4, G4, A4, C5,
+          A4, G4, E4, G4,
+          D4, E4, G4, E4,
+          D4, C4, D4, G4
+        ];
+
+        this.bgmStep = 0;
+        this.bgmTimer = setInterval(() => {
+          if (!this.bgmEnabled || this.muted || !this.ctx || this.ctx.state !== 'running') return;
+
+          const now = this.ctx.currentTime;
+          const noteFreq = melody[this.bgmStep % melody.length];
+
+          // 1. Festive Shehnai / Harmonium style lead synth (Routed to 75% BGM Master Gain)
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(noteFreq, now);
+
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+          osc.connect(gain);
+          gain.connect(this.bgmMasterGain);
+          osc.start(now);
+          osc.stop(now + 0.19);
+
+          // 2. Authentic Dholak Rhythm ("धिन-ता" syncopation)
+          const beatIndex = this.bgmStep % 16;
+          if (beatIndex === 0 || beatIndex === 8) {
+            // Low Dholak "Dhin" (Resonant bass stroke)
+            const bass = this.ctx.createOscillator();
+            const bGain = this.ctx.createGain();
+            bass.type = 'sine';
+            bass.frequency.setValueAtTime(115, now);
+            bass.frequency.exponentialRampToValueAtTime(45, now + 0.16);
+
+            bGain.gain.setValueAtTime(0.12, now);
+            bGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+            bass.connect(bGain);
+            bGain.connect(this.bgmMasterGain);
+            bass.start(now);
+            bass.stop(now + 0.17);
+          } else if (beatIndex === 4 || beatIndex === 12) {
+            // High Dholak "Ta" (Snap stroke)
+            const high = this.ctx.createOscillator();
+            const hGain = this.ctx.createGain();
+            high.type = 'triangle';
+            high.frequency.setValueAtTime(340, now);
+            high.frequency.exponentialRampToValueAtTime(150, now + 0.08);
+
+            hGain.gain.setValueAtTime(0.06, now);
+            hGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+            high.connect(hGain);
+            hGain.connect(this.bgmMasterGain);
+            high.start(now);
+            high.stop(now + 0.09);
+          }
+
+          this.bgmStep++;
+        }, 190); // ~158 BPM energetic Makar Sankranti tempo
+      }
+
+      // Wind swoop / Khinch whoosh
+      playWhoosh(pitch = 280) {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(pitch, now);
+        osc.frequency.exponentialRampToValueAtTime(pitch * 2.2, now + 0.15);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+
+      // String rubbing friction buzz during clash
+      playFriction() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800 + Math.random() * 400, now);
+        osc.frequency.linearRampToValueAtTime(600, now + 0.08);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+
+      // High victory chime "KAI PO CHEEE"
+      playVictory() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const notes = [440, 554.37, 659.25, 880];
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t = now + idx * 0.07;
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(0.2, t);
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.2);
+        });
+      }
+
+      // Snapped string pop
+      playSnap() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(1400, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.2);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      }
+
+      // Powerup ding
+      playPowerup() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+    }
+
+    /* =====================================================================
+       GAME CONSTANTS & STATE
+       ===================================================================== */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const sfx = new KiteSoundFX();
+
+    let W = 0, H = 0;
+
+    // Shout Bubble Helper
+    let shoutTimeout = null;
+    function triggerRooftopShout(text, spokenText) {
+      const bubble = document.getElementById('shoutBubble');
+      const textEl = document.getElementById('shoutText');
+      if (textEl && bubble) {
+        textEl.innerText = text;
+        bubble.classList.remove('opacity-0', 'scale-75');
+        bubble.classList.add('opacity-100', 'scale-100');
+
+        clearTimeout(shoutTimeout);
+        shoutTimeout = setTimeout(() => {
+          bubble.classList.remove('opacity-100', 'scale-100');
+          bubble.classList.add('opacity-0', 'scale-75');
+        }, 1800);
+      }
+
+      sfx.speakDesi(spokenText || text, true);
+    }
+    window.addEventListener('resize', resize);
+
+    // Audio & Mute
+    const muteBtn = document.getElementById('muteBtn');
+    muteBtn.addEventListener('click', () => {
+      sfx.init();
+      const isMuted = sfx.toggleMute();
+      muteBtn.innerText = isMuted ? '🔇' : '🔊';
+    });
+
+    const bgmBtn = document.getElementById('bgmBtn');
+    const bgmStatus = document.getElementById('bgmStatus');
+    bgmBtn.addEventListener('click', () => {
+      sfx.init();
+      const isSongOn = sfx.toggleBGM();
+      bgmStatus.innerText = isSongOn ? 'SONG: ON' : 'SONG: OFF';
+      bgmBtn.className = isSongOn
+        ? 'bg-rose-500 text-yellow-200 px-2 py-1 rounded-xl comic-border text-xs font-black hover:bg-rose-400 transition flex items-center gap-1'
+        : 'bg-slate-700 text-slate-300 px-2 py-1 rounded-xl comic-border text-xs font-black transition flex items-center gap-1';
+    });
+
+    const voiceBtn = document.getElementById('voiceBtn');
+    const voiceStatus = document.getElementById('voiceStatus');
+    voiceBtn.addEventListener('click', () => {
+      sfx.init();
+      const isOn = sfx.toggleVoice();
+      voiceStatus.innerText = isOn ? 'VOICE: ON' : 'VOICE: OFF';
+      voiceBtn.className = isOn
+        ? 'bg-amber-400 text-slate-950 px-2 py-1 rounded-xl comic-border text-xs font-black hover:bg-yellow-300 transition flex items-center gap-1'
+        : 'bg-slate-700 text-slate-300 px-2 py-1 rounded-xl comic-border text-xs font-black transition flex items-center gap-1';
+    });
+
+    let gameActive = false;
+    let score = 0;
+    let recordScore = parseInt(localStorage.getItem('patang_record') || '0', 10);
+    let health = 100;
+    let bareillyTimer = 0;
+    let windOffset = 0;
+    let screenShake = 0;
+
+    const keys = {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      khinch: false,
+      dheel: false
+    };
+
+    const player = {
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      size: 38,
+      tilt: 0,
+      tailHistory: [],
+      stringOriginX: 0,
+      stringOriginY: 0,
+      targetX: null,
+      targetY: null,
+      touchActive: false
+    };
+
+    let rivals = [];
+    let pigeons = [];
+    let powerups = [];
+    let cutKites = [];
+    let popups = [];
+    let clouds = [];
+    let rooftops = [];
+
+    const VICTORY_PHRASES = [
+      "LAPET RE LAPET!! ✂️",
+      "LAPET RE LAPET!! 🪁",
+      "LAPET RE LAPET!! 🔥"
+    ];
+
+    const DEFEAT_QUOTES = [
+      "\"Sharma Ji ke chhat se neeche khinch ke kaat di!\"",
+      "\"Pinku ka Bareilly Manja bohot tezz tha baguwa!\"",
+      "\"Kabootar ne aake dor phasa di yaar!\"",
+      "\"Dheel dene me deri kardi beta!\""
+    ];
+
+    function resize() {
+      const container = canvas.parentElement;
+      W = canvas.width = container.clientWidth;
+      H = canvas.height = container.clientHeight;
+
+      if (!gameActive) {
+        player.x = W * 0.5;
+        player.y = H * 0.55;
+        player.stringOriginX = W * 0.18;
+        player.stringOriginY = H - 15;
+      }
+    }
+
+    function initScenery() {
+      clouds = [];
+      for (let i = 0; i < 5; i++) {
+        clouds.push({
+          x: Math.random() * W,
+          y: 20 + Math.random() * (H * 0.35),
+          w: 60 + Math.random() * 50,
+          speed: 0.2 + Math.random() * 0.3
+        });
+      }
+
+      rooftops = [];
+      const numHouses = 8;
+      const hw = W / (numHouses - 1);
+      for (let i = 0; i < numHouses; i++) {
+        rooftops.push({
+          x: i * hw - 10,
+          w: hw + 15,
+          h: 60 + Math.random() * 50,
+          color: ['#fca5a5', '#fdba74', '#fde047', '#93c5fd', '#c4b5fd'][i % 5],
+          hasKid: Math.random() > 0.3
+        });
+      }
+    }
+
+    function resetGame() {
+      score = 0;
+      health = 100;
+      bareillyTimer = 0;
+      screenShake = 0;
+
+      player.x = W * 0.5;
+      player.y = H * 0.55;
+      player.vx = 0;
+      player.vy = 0;
+      player.tilt = 0;
+      player.tailHistory = [];
+      player.stringOriginX = W * 0.18;
+      player.stringOriginY = H - 15;
+      player.targetX = null;
+      player.targetY = null;
+      player.touchActive = false;
+
+      rivals = [];
+      pigeons = [];
+      powerups = [];
+      cutKites = [];
+      popups = [];
+
+      document.getElementById('bareillyBadge').classList.add('hidden');
+      updateHUD();
+    }
+
+    function addPopup(x, y, text, color = '#f59e0b', scale = 1) {
+      popups.push({
+        x,
+        y,
+        text,
+        color,
+        scale,
+        alpha: 1,
+        vy: -1.6
+      });
+    }
+
+    /* =====================================================================
+       INPUT HANDLING
+       ===================================================================== */
+    window.addEventListener('keydown', (e) => {
+      if (!gameActive) return;
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        keys.down = true;
+      }
+      if (e.code === 'Space') {
+        keys.khinch = true;
+      }
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        keys.dheel = true;
+        triggerRooftopShout("ढील दे दे रे!! 💨", "ढील दे दे रे!");
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = false;
+      if (e.code === 'Space') keys.khinch = false;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.dheel = false;
+    });
+
+    // Touch Action Buttons (KHINCH & DHEEL)
+    const bindBtn = (el, keyName, onAction) => {
+      if (!el) return;
+      const start = (e) => {
+        if (e.cancelable) e.preventDefault();
+        keys[keyName] = true;
+        if (onAction) onAction();
+      };
+      const end = (e) => {
+        if (e.cancelable) e.preventDefault();
+        keys[keyName] = false;
+      };
+
+      el.addEventListener('touchstart', start, { passive: false });
+      el.addEventListener('touchend', end, { passive: false });
+      el.addEventListener('touchcancel', end, { passive: false });
+      el.addEventListener('mousedown', start);
+      el.addEventListener('mouseup', end);
+      el.addEventListener('mouseleave', end);
+    };
+
+    bindBtn(document.getElementById('btnKhinch'), 'khinch');
+    bindBtn(document.getElementById('btnDheel'), 'dheel', () => {
+      triggerRooftopShout("ढील दे दे रे!! 💨", "ढील दे दे रे!");
+    });
+
+    /* =====================================================================
+       TOUCHPAD & POINTER PRECISION STEERING (EASY DIRECT FLIGHT)
+       ===================================================================== */
+    function updatePointerTarget(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      const px = (clientX - rect.left) * scaleX;
+      const py = (clientY - rect.top) * scaleY;
+
+      // Restrict target coordinates to valid sky bounds
+      player.targetX = Math.max(player.size, Math.min(W - player.size, px));
+      player.targetY = Math.max(player.size, Math.min(H * 0.72, py));
+      player.touchActive = true;
+    }
+
+    // Touch events for phone screens and trackpad taps
+    canvas.addEventListener('touchstart', (e) => {
+      if (!gameActive) return;
+      if (e.cancelable) e.preventDefault();
+      updatePointerTarget(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (!gameActive) return;
+      if (e.cancelable) e.preventDefault();
+      updatePointerTarget(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+
+    const endTouch = () => {
+      player.touchActive = false;
+    };
+    canvas.addEventListener('touchend', endTouch);
+    canvas.addEventListener('touchcancel', endTouch);
+
+    // Mouse & Laptop Touchpad Drag Steering
+    let isMouseDown = false;
+    canvas.addEventListener('mousedown', (e) => {
+      if (!gameActive) return;
+      isMouseDown = true;
+      updatePointerTarget(e.clientX, e.clientY);
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!gameActive) return;
+      // If dragging mouse/touchpad or just gliding across canvas
+      if (isMouseDown || e.buttons === 1) {
+        updatePointerTarget(e.clientX, e.clientY);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      isMouseDown = false;
+      player.touchActive = false;
+    });
+
+    /* =====================================================================
+       SPAWNING (RIVALS, KABOOTARS, POWERUPS)
+       ===================================================================== */
+    let rivalSpawnTimer = 0;
+    let pigeonSpawnTimer = 0;
+    let powerupSpawnTimer = 0;
+
+    const RIVAL_PROFILES = [
+      { name: "Pinku", color: "#ec4899", style: "dart", speed: 2.8, toughness: 40 },
+      { name: "Sharma Ji", color: "#eab308", style: "heavy", speed: 1.8, toughness: 70 },
+      { name: "Bunty", color: "#06b6d4", style: "erratic", speed: 3.2, toughness: 35 },
+      { name: "Guddu Bhaiya", color: "#84cc16", style: "aggressive", speed: 2.4, toughness: 55 }
+    ];
+
+    function spawnRival() {
+      const prof = RIVAL_PROFILES[Math.floor(Math.random() * RIVAL_PROFILES.length)];
+      const side = Math.random() > 0.5 ? 1 : -1;
+      const x = side === 1 ? -60 : W + 60;
+      const y = 80 + Math.random() * (H * 0.45);
+
+      rivals.push({
+        name: prof.name,
+        color: prof.color,
+        x,
+        y,
+        targetX: W * (0.2 + Math.random() * 0.6),
+        targetY: 80 + Math.random() * (H * 0.45),
+        size: 38,
+        speed: prof.speed,
+        toughness: prof.toughness,
+        maxToughness: prof.toughness,
+        tilt: 0,
+        swayPhase: Math.random() * Math.PI * 2,
+        stringX: (side === 1 ? W * 0.8 : W * 0.9),
+        stringY: H - 15,
+        clashing: false
+      });
+    }
+
+    function spawnPigeon() {
+      const fromLeft = Math.random() > 0.5;
+      pigeons.push({
+        x: fromLeft ? -40 : W + 40,
+        y: 60 + Math.random() * (H * 0.5),
+        vx: (fromLeft ? 1 : -1) * (2.6 + Math.random() * 1.5),
+        wingCycle: 0
+      });
+    }
+
+    function spawnPowerup() {
+      const r = Math.random();
+      const type = r < 0.45 ? 'bareilly' : (r < 0.75 ? 'tilgul' : 'speed');
+      powerups.push({
+        type,
+        x: W * 0.15 + Math.random() * (W * 0.7),
+        y: -40,
+        vy: 1.2 + Math.random() * 0.8,
+        swing: 0
+      });
+    }
+
+    /* =====================================================================
+       PHYSICS & LOGIC LOOP
+       ===================================================================== */
+    function update() {
+      if (!gameActive) return;
+
+      windOffset += 0.05;
+
+      // Handle Bareilly timer
+      if (bareillyTimer > 0) {
+        bareillyTimer--;
+        if (bareillyTimer <= 0) {
+          document.getElementById('bareillyBadge').classList.add('hidden');
+        }
+      }
+
+      // Player Movement & Kite Aerodynamics
+      const naturalSway = Math.sin(windOffset * 1.5) * 0.8;
+      player.vx += naturalSway * 0.15;
+
+      // DIRECT TOUCHPAD / FINGER FOLLOW MODE
+      if (player.touchActive && player.targetX !== null && player.targetY !== null) {
+        const dx = player.targetX - player.x;
+        const dy = player.targetY - player.y;
+
+        // Smooth responsive follow tracking with natural kite elasticity
+        player.vx += dx * 0.14;
+        player.vy += dy * 0.14;
+
+        // Auto-tilt based on horizontal drag motion
+        player.tilt = Math.max(-0.55, Math.min(0.55, dx * 0.025));
+      } else {
+        // Fallback to D-pad & Keyboard controls
+        if (keys.left) {
+          player.vx -= 0.75;
+          player.tilt = Math.max(-0.45, player.tilt - 0.08);
+        }
+        if (keys.right) {
+          player.vx += 0.75;
+          player.tilt = Math.min(0.45, player.tilt + 0.08);
+        }
+        if (!keys.left && !keys.right) {
+          player.tilt *= 0.88;
+        }
+
+        // Up arrow manual climb
+        if (keys.up) {
+          player.vy -= 0.65;
+        }
+        // Down arrow dip/dive
+        if (keys.down) {
+          player.vy += 0.65;
+        }
+      }
+
+      // Khinch (Pull sharply Up & fast offensive cut surge)
+      if (keys.khinch) {
+        player.vy -= 0.95;
+        player.tilt *= 0.95;
+        if (Math.random() > 0.6) sfx.playWhoosh(360);
+      }
+      // Dheel (Let wind carry and drift safely)
+      else if (keys.dheel) {
+        player.vy += 0.55;
+        player.vx += Math.sin(windOffset * 2) * 0.8;
+      } else if (!player.touchActive) {
+        // Natural lift vs gravity balance when not steering
+        player.vy += 0.18; // gravity
+        player.vy -= 0.14; // kite wind lift
+      }
+
+      // Apply Friction & Speed limit
+      player.vx *= 0.86;
+      player.vy *= 0.86;
+      player.x += player.vx;
+      player.y += player.vy;
+
+      // Bounds
+      player.x = Math.max(player.size, Math.min(W - player.size, player.x));
+      player.y = Math.max(player.size, Math.min(H * 0.72, player.y));
+
+      // Kite tail physics trace
+      player.tailHistory.unshift({ x: player.x, y: player.y });
+      if (player.tailHistory.length > 12) player.tailHistory.pop();
+
+      // Cloud Parallax
+      clouds.forEach(c => {
+        c.x += c.speed;
+        if (c.x > W + c.w) c.x = -c.w;
+      });
+
+      // Spawning Triggers
+      rivalSpawnTimer++;
+      if (rivalSpawnTimer > Math.max(50, 140 - score * 4)) {
+        if (rivals.length < 4) spawnRival();
+        rivalSpawnTimer = 0;
+      }
+
+      pigeonSpawnTimer++;
+      if (pigeonSpawnTimer > 180) {
+        spawnPigeon();
+        pigeonSpawnTimer = 0;
+      }
+
+      powerupSpawnTimer++;
+      if (powerupSpawnTimer > 320) {
+        spawnPowerup();
+        powerupSpawnTimer = 0;
+      }
+
+      // Update Rivals
+      for (let i = rivals.length - 1; i >= 0; i--) {
+        const r = rivals[i];
+        r.swayPhase += 0.06;
+
+        // Artificial rooftop kid kite intelligence
+        const dx = (player.x + Math.sin(r.swayPhase) * 45) - r.x;
+        const dy = (player.y + Math.cos(r.swayPhase) * 30) - r.y;
+
+        r.x += Math.sign(dx) * Math.min(Math.abs(dx), r.speed);
+        r.y += Math.sign(dy) * Math.min(Math.abs(dy), r.speed * 0.75);
+        r.tilt = (dx > 0 ? 0.25 : -0.25);
+
+        // Distance to Player Kite
+        const dist = Math.hypot(player.x - r.x, player.y - r.y);
+
+        // MANJA CLASH (KITE FIGHT!)
+        if (dist < player.size + r.size) {
+          r.clashing = true;
+          screenShake = 3;
+
+          // Contextual Rooftop Advice Shout only for Dheel
+          if (!keys.khinch && !keys.dheel && Math.random() < 0.04) {
+            if (player.y > r.y + 10) {
+              triggerRooftopShout("ढील दे दे रे!! 💨", "ढील दे दे रे!");
+            }
+          }
+
+          // Sound friction
+          if (Math.random() > 0.4) sfx.playFriction();
+
+          // Damage logic: Player cutting rival
+          let playerCutPower = keys.khinch ? 3.5 : 1.2;
+          if (bareillyTimer > 0) playerCutPower = 18; // Super manja destroys
+
+          r.toughness -= playerCutPower;
+
+          // Rival damaging player string
+          if (bareillyTimer <= 0) {
+            health -= (keys.dheel ? 0.3 : 0.8);
+          }
+
+          // Cut spark effects
+          addPopup(
+            (player.x + r.x) / 2 + (Math.random() - 0.5) * 20,
+            (player.y + r.y) / 2,
+            "⚡",
+            "#facc15",
+            0.8
+          );
+
+          // RIVAL KITE CUT!!
+          if (r.toughness <= 0) {
+            score++;
+            sfx.playVictory();
+            sfx.playSnap();
+            screenShake = 7;
+
+            // Updated to LAPET RE LAPET!
+            addPopup(r.x, r.y - 30, "LAPET RE LAPET!! ✂️", '#e11d48', 1.5);
+            triggerRooftopShout("लपेट रे लपेट!! 🪁", "लपेट रे लपेट!");
+
+            // Turn into drifting falling cut kite
+            cutKites.push({
+              x: r.x,
+              y: r.y,
+              color: r.color,
+              size: r.size,
+              vx: (Math.random() - 0.5) * 3,
+              vy: 1.8,
+              rot: r.tilt,
+              rotSpeed: (Math.random() - 0.5) * 0.2
+            });
+
+            rivals.splice(i, 1);
+            updateHUD();
+            continue;
+          }
+        } else {
+          r.clashing = false;
+        }
+      }
+
+      // Update Pigeons (Kabootar hazard)
+      for (let p = pigeons.length - 1; p >= 0; p--) {
+        const pig = pigeons[p];
+        pig.x += pig.vx;
+        pig.wingCycle += 0.35;
+
+        // Hit player kite
+        if (Math.hypot(player.x - pig.x, player.y - pig.y) < player.size * 0.9) {
+          health -= 18;
+          sfx.playSnap();
+          screenShake = 6;
+          addPopup(pig.x, pig.y, "KABOOTAR STRUCK! 🕊️", '#ef4444');
+          pigeons.splice(p, 1);
+          continue;
+        }
+
+        if (pig.x < -60 || pig.x > W + 60) {
+          pigeons.splice(p, 1);
+        }
+      }
+
+      // Update Falling Cut Kites (Lappet animation)
+      for (let k = cutKites.length - 1; k >= 0; k--) {
+        const ck = cutKites[k];
+        ck.x += ck.vx;
+        ck.y += ck.vy;
+        ck.rot += ck.rotSpeed;
+        ck.vy += 0.05; // falling downwards to streets
+        if (ck.y > H + 50) {
+          cutKites.splice(k, 1);
+        }
+      }
+
+      // Update Floating Powerups
+      for (let u = powerups.length - 1; u >= 0; u--) {
+        const p = powerups[u];
+        p.y += p.vy;
+        p.swing += 0.05;
+        p.x += Math.sin(p.swing) * 0.8;
+
+        // Catch powerup with kite
+        if (Math.hypot(player.x - p.x, player.y - p.y) < player.size + 15) {
+          sfx.playPowerup();
+          if (p.type === 'bareilly') {
+            bareillyTimer = 360; // ~6 seconds
+            document.getElementById('bareillyBadge').classList.remove('hidden');
+            addPopup(p.x, p.y, "BAREILLY MANJA ACTIVE! 🔥", '#dc2626', 1.2);
+          } else if (p.type === 'tilgul') {
+            health = Math.min(100, health + 35);
+            addPopup(p.x, p.y, "+35 MANJA REPAIRED! 🧆", '#10b981');
+          } else if (p.type === 'speed') {
+            player.vx *= 1.8;
+            addPopup(p.x, p.y, "TEZ HAWA BOOST! 💨", '#0284c7');
+          }
+          powerups.splice(u, 1);
+          updateHUD();
+          continue;
+        }
+
+        if (p.y > H + 40) powerups.splice(u, 1);
+      }
+
+      // Update Popups
+      for (let i = popups.length - 1; i >= 0; i--) {
+        const pop = popups[i];
+        pop.y += pop.vy;
+        pop.alpha -= 0.02;
+        if (pop.alpha <= 0) popups.splice(i, 1);
+      }
+
+      // Screen Shake Dampening
+      if (screenShake > 0.2) screenShake *= 0.88;
+
+      // Health Check
+      if (health <= 0) {
+        gameOver();
+      }
+
+      updateHUD();
+    }
+
+    /* =====================================================================
+       RENDERING: BEAUTIFUL SKY, ROOFTOPS, MANJA & KITES
+       ===================================================================== */
+    function drawKite(x, y, size, color, tilt, isPlayer = false, hasBareilly = false) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(tilt);
+
+      // Bareilly Fire Glow
+      if (hasBareilly) {
+        ctx.shadowColor = '#f43f5e';
+        ctx.shadowBlur = 18;
+      }
+
+      // Diamond Body
+      ctx.fillStyle = color;
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2.5;
+
+      ctx.beginPath();
+      ctx.moveTo(0, -size);       // Top corner
+      ctx.lineTo(size * 0.85, 0);  // Right corner
+      ctx.lineTo(0, size);        // Bottom corner
+      ctx.lineTo(-size * 0.85, 0); // Left corner
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Inner Pattern (Indian Patang Dual tone)
+      ctx.fillStyle = isPlayer ? '#fbbf24' : '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(0, -size);
+      ctx.lineTo(size * 0.85, 0);
+      ctx.lineTo(0, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Bamboo Spine (Thadda)
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -size);
+      ctx.lineTo(0, size);
+      ctx.stroke();
+
+      // Curved Bamboo Bow (Kampa)
+      ctx.beginPath();
+      ctx.arc(0, size * 0.35, size * 1.15, Math.PI * 1.2, Math.PI * 1.8);
+      ctx.stroke();
+
+      // Little Triangular Kite Tail (Poonchh)
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.25, size);
+      ctx.lineTo(size * 0.25, size);
+      ctx.lineTo(0, size + size * 0.45);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.save();
+
+      // Screen Shake
+      if (screenShake > 0.3) {
+        ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+      }
+
+      // Sky Background
+      ctx.clearRect(0, 0, W, H);
+
+      // Soft clouds
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      clouds.forEach(c => {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.w * 0.25, 0, Math.PI * 2);
+        ctx.arc(c.x + c.w * 0.25, c.y - 10, c.w * 0.3, 0, Math.PI * 2);
+        ctx.arc(c.x + c.w * 0.55, c.y, c.w * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Rooftops in background (Chhat & Terraces)
+      rooftops.forEach(r => {
+        ctx.fillStyle = r.color;
+        ctx.fillRect(r.x, H - r.h, r.w, r.h);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(r.x, H - r.h, r.w, r.h);
+
+        // Parapet line
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(r.x, H - r.h, r.w, 8);
+
+        // Cheering Rooftop Boy with Charkhi (Spool)
+        if (r.hasKid) {
+          const kidX = r.x + r.w * 0.5;
+          const kidY = H - r.h - 10;
+          ctx.fillStyle = '#fde047';
+          ctx.beginPath();
+          ctx.arc(kidX, kidY, 7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Spool / Charkhi
+          ctx.fillStyle = '#ea580c';
+          ctx.fillRect(kidX + 8, kidY + 2, 8, 12);
+        }
+      });
+
+      // DRAW MANJA STRING (Player's Rooftop to Kite)
+      ctx.save();
+      ctx.strokeStyle = bareillyTimer > 0 ? '#ef4444' : '#ffffff';
+      ctx.lineWidth = bareillyTimer > 0 ? 3.5 : 2;
+      ctx.shadowColor = bareillyTimer > 0 ? '#f43f5e' : 'transparent';
+      ctx.shadowBlur = bareillyTimer > 0 ? 8 : 0;
+
+      // Realistic Catinary Bending Curve
+      const midX = (player.stringOriginX + player.x) * 0.5 + (keys.dheel ? 35 : -15);
+      const midY = (player.stringOriginY + player.y) * 0.5 + 40;
+
+      ctx.beginPath();
+      ctx.moveTo(player.stringOriginX, player.stringOriginY);
+      ctx.quadraticCurveTo(midX, midY, player.x, player.y);
+      ctx.stroke();
+      ctx.restore();
+
+      // DRAW RIVALS & THEIR STRINGS
+      rivals.forEach(r => {
+        // String
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(r.stringX, r.stringY);
+        ctx.quadraticCurveTo((r.stringX + r.x) * 0.5, (r.stringY + r.y) * 0.5 + 25, r.x, r.y);
+        ctx.stroke();
+
+        // Kite
+        drawKite(r.x, r.y, r.size, r.color, r.tilt);
+
+        // Name & Health Tag
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '900 11px Comic Neue, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(r.name, r.x, r.y - r.size - 12);
+
+        // String toughness meter
+        const barW = 34;
+        const barH = 5;
+        const pct = Math.max(0, r.toughness / r.maxToughness);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(r.x - barW / 2, r.y - r.size - 8, barW, barH);
+        ctx.fillStyle = pct > 0.4 ? '#ef4444' : '#eab308';
+        ctx.fillRect(r.x - barW / 2 + 1, r.y - r.size - 7, (barW - 2) * pct, barH - 2);
+      });
+
+      // DRAW FALLING CUT KITES (Drifting into streets)
+      cutKites.forEach(ck => {
+        drawKite(ck.x, ck.y, ck.size, ck.color, ck.rot);
+        ctx.fillStyle = '#b91c1c';
+        ctx.font = '900 11px Comic Neue, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("KATI PATANG!", ck.x, ck.y - 20);
+      });
+
+      // DRAW POWERUPS
+      powerups.forEach(p => {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+
+        // Small Parachute canopy
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.arc(0, -12, 18, Math.PI, 0);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-16, -12);
+        ctx.lineTo(0, 6);
+        ctx.moveTo(16, -12);
+        ctx.lineTo(0, 6);
+        ctx.stroke();
+
+        // Icon
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'center';
+        const icon = p.type === 'bareilly' ? '🔥' : (p.type === 'tilgul' ? '🧆' : '💨');
+        ctx.fillText(icon, 0, 16);
+        ctx.restore();
+      });
+
+      // DRAW PIGEONS (KABOOTAR)
+      pigeons.forEach(pig => {
+        ctx.save();
+        ctx.translate(pig.x, pig.y);
+        ctx.font = '24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🕊️', 0, Math.sin(pig.wingCycle) * 3);
+        ctx.restore();
+      });
+
+      // DRAW TOUCHPAD GUIDE RETICLE (When touching/gliding)
+      if (player.touchActive && player.targetX !== null && player.targetY !== null) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(player.targetX, player.targetY, 18, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // DRAW PLAYER KITE
+      drawKite(player.x, player.y, player.size, '#3b82f6', player.tilt, true, bareillyTimer > 0);
+
+      // Dynamic Wavy Ribbon Tail
+      if (player.tailHistory.length > 2) {
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(player.x, player.y + player.size);
+        for (let t = 0; t < player.tailHistory.length; t++) {
+          const pt = player.tailHistory[t];
+          ctx.lineTo(pt.x + Math.sin(windOffset * 3 + t) * 6, pt.y + player.size + t * 4);
+        }
+        ctx.stroke();
+      }
+
+      // DRAW COMIC POPUPS
+      popups.forEach(pop => {
+        ctx.save();
+        ctx.globalAlpha = pop.alpha;
+        ctx.translate(pop.x, pop.y);
+        ctx.scale(pop.scale, pop.scale);
+        ctx.font = '900 15px Comic Neue, sans-serif';
+        ctx.textAlign = 'center';
+
+        // Comic drop-shadow
+        ctx.fillStyle = '#000';
+        ctx.fillText(pop.text, 2, 2);
+
+        ctx.fillStyle = pop.color;
+        ctx.fillText(pop.text, 0, 0);
+        ctx.restore();
+      });
+
+      ctx.restore();
+    }
+
+    /* =====================================================================
+       HUD, RANK & GAME OVER
+       ===================================================================== */
+    function updateHUD() {
+      document.getElementById('scoreDisplay').innerText = score;
+      document.getElementById('recordDisplay').innerText = recordScore;
+
+      const healthPct = Math.max(0, Math.round(health));
+      document.getElementById('healthPercent').innerText = `${healthPct}%`;
+      const bar = document.getElementById('healthBar');
+      bar.style.width = `${healthPct}%`;
+
+      if (healthPct < 30) {
+        bar.className = 'bg-rose-600 h-full transition-all duration-150';
+      } else if (healthPct < 60) {
+        bar.className = 'bg-amber-500 h-full transition-all duration-150';
+      } else {
+        bar.className = 'bg-emerald-500 h-full transition-all duration-150';
+      }
+    }
+
+    function gameOver() {
+      gameActive = false;
+      sfx.playSnap();
+
+      if (score > recordScore) {
+        recordScore = score;
+        localStorage.setItem('patang_record', recordScore.toString());
+      }
+
+      // Title based on score
+      let title = "Gali Ka Shaukeen";
+      if (score >= 15) title = "Mohalla King (Lapet Re Lapet Master!)";
+      else if (score >= 8) title = "Bareilly Manja Master";
+      else if (score >= 3) title = "Rooftop Khiladi";
+
+      document.getElementById('defeatQuote').innerText = DEFEAT_QUOTES[Math.floor(Math.random() * DEFEAT_QUOTES.length)];
+      document.getElementById('finalScore').innerText = score;
+      document.getElementById('finalTitle').innerText = title;
+      document.getElementById('finalRecord').innerText = recordScore;
+
+      document.getElementById('gameOverScreen').classList.remove('hidden');
+    }
+
+    /* =====================================================================
+       MAIN LOOP & INIT
+       ===================================================================== */
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+      sfx.init();
+      document.getElementById('startScreen').classList.add('hidden');
+      resetGame();
+      gameActive = true;
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      sfx.init();
+      document.getElementById('gameOverScreen').classList.add('hidden');
+      resetGame();
+      gameActive = true;
+    });
+
+    window.onload = function() {
+      resize();
+      initScenery();
+      updateHUD();
+      gameLoop();
+    };
+  </script>
+</body>
+</html>
